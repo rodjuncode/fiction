@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiction</title>
+</head>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&display=swap" rel="stylesheet">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@400..700&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+<style>
+
+    /* <uniquifier>: Use a unique and descriptive class name
+    <weight>: Use a value from 400 to 700 */
+
+    .domine-manuscript {
+        font-family: "Domine", serif;
+        font-optical-sizing: auto;
+        font-weight: 400;
+        font-style: normal;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    #interface {   
+        display: flex;
+        flex-wrap: nowrap; 
+    }
+
+    #manuscript {
+        display:inline-block;
+        font-size: 2.5em;
+        height: 800px;
+        line-height: 1.3em;
+        margin: 0;
+        padding: 0;
+        overflow: auto;
+/*        outline: none;*/
+        width: 600px;
+        white-space: pre-wrap;
+        
+        -webkit-box-shadow: none;
+        -moz-box-shadow: none;
+    }
+
+    #sidebar { 
+        background: black;
+        width: 200px; 
+    }
+
+    .character {
+        display: inline-block;
+        border-radius: 0.25em;
+        background: #ffd6ec;
+        white-space: pre;
+    }
+
+    /* CONTEXT MENU */
+
+    .ContextMenu-fiction {
+        font-family: "Roboto Condensed", serif;
+    }
+
+</style>
+
+<body>
+
+    <div id="interface">
+        <div id="sibebar">oi</div>
+        <div id="manuscript" contenteditable="true" class="domine-manuscript"></div>
+    </div>
+
+    <script>
+        const fiction = {
+            manuscript : '',
+            entries : {},            
+        };
+        
+        const manuscript = document.querySelector("#manuscript");
+    
+        manuscript.addEventListener('keyup', function(e) {
+            fiction.manuscript = this.innerHTML;
+            console.log(fiction);
+        });
+
+        function cleanEntries() {
+            let toClean = document.querySelectorAll('entry.remove');
+            while(toClean.length) {
+                let parent = toClean[0].parentNode;
+                while(toClean[0].firstChild) {
+                    parent.insertBefore(toClean[0].firstChild, toClean[0]);
+                }
+                parent.removeChild(toClean[0]);
+                parent.normalize();
+                toClean = document.querySelectorAll('entry.remove');
+            }
+        }
+    
+
+    </script>
+    
+    <script src="libs/context-menu.min.js"></script>
+    <script>
+        var manuscript_MenuItems = [
+            { name: '💀 Criar personagem', fn: markAsChar },
+            { name: 'Copy', fn: function(target) { console.log('Copy', target); }},
+            { name: 'Paste', fn: function(target) { console.log('Paste', target); }},
+            {},
+            { name: 'Selecionar tudo', fn: function(target) { console.log('Select All', target); }},
+        ];
+
+        var manuscript_CtxMenu = new ContextMenu('#manuscript', manuscript_MenuItems, { className: 'ContextMenu-fiction' });
+        manuscript_CtxMenu.on('shown', () => console.log('Context menu shown'));
+
+        var character_MenuItems = [
+            { name: '❌ Desmarcar personagem', fn: function(target) { unmarkAsChar(target); } },
+        ];
+
+        var character_CtxMenu = new ContextMenu('.character', character_MenuItems, { className: 'ContextMenu-fiction' });
+        character_CtxMenu.on('shown', () => console.log('Context menu shown'));
+
+        function unmarkAsChar(target) {
+            target.classList.remove('character');
+            target.classList.add('remove');
+            if (window.getSelection) {
+                sel = window.getSelection();
+                sel.removeAllRanges();
+            }
+            cleanEntries();
+        }
+
+        function markAsChar() {
+            if (window.getSelection) {
+                sel = window.getSelection();
+                if (sel.getRangeAt && sel.rangeCount) {
+                    var el = document.createElement("div");
+                    el.innerHTML = "<entry id='entry_" + Date.now() +  "' class='character'>" + sel.toString() + "</entry>";
+
+                    range = sel.getRangeAt(0);
+                    range.deleteContents();
+
+                    var frag = document.createDocumentFragment(), node, lastNode;
+                    while ( (node = el.firstChild) ) {
+                        lastNode = frag.appendChild(node);
+                    }
+                    range.insertNode(frag);
+                    
+                    // Preserve the selection
+                    if (lastNode) {
+                        range = range.cloneRange();
+                        range.setStartAfter(lastNode);
+                        range.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                }
+            } 
+        }
+
+    </script>
+
+</body>
+</html>
