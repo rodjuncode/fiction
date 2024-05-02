@@ -34,34 +34,38 @@
     #interface {   
         display: flex;
         flex-wrap: nowrap; 
+        height: 100vh;
     }
 
     #manuscript {
-        display:inline-block;
+        background: white;
         font-size: 2.5em;
-        height: 800px;
         line-height: 1.3em;
         margin: 0;
-        padding: 0;
+        padding: 10% 20%;
         overflow: auto;
-/*        outline: none;*/
-        width: 600px;
-        white-space: pre-wrap;
-        
+        outline: none;
+        width: 80%;
         -webkit-box-shadow: none;
         -moz-box-shadow: none;
     }
 
     #sidebar { 
-        background: black;
-        width: 200px; 
+        background: #EEE;
+        font-family: 'Roboto Condensed', sans-serif;
+        min-width: 200px;
+        width: 20%;
+    }
+
+    #sidebar h2 {
+        margin: 0;
+        padding: 20px 20px 0 20px;
     }
 
     .character {
-        display: inline-block;
-        border-radius: 0.25em;
+        border-radius: 0.15em;
         background: #ffd6ec;
-        white-space: pre;
+        padding: 5px 0;
     }
 
     /* CONTEXT MENU */
@@ -75,7 +79,11 @@
 <body>
 
     <div id="interface">
-        <div id="sibebar">oi</div>
+        <div id="sidebar">
+            <h2>PERSONAGENS</h2>
+            <ul>
+            </ul>
+        </div>
         <div id="manuscript" contenteditable="true" class="domine-manuscript"></div>
     </div>
 
@@ -89,10 +97,26 @@
     
         manuscript.addEventListener('keyup', function(e) {
             fiction.manuscript = this.innerHTML;
-            console.log(fiction);
         });
 
-        function cleanEntries() {
+        manuscript.addEventListener('keyup', function(e) {
+            
+            let editingEntry = Object.keys(fiction.entries).filter(e => fiction.entries[e].references.includes(window.getSelection().anchorNode.parentNode.id));
+            if (editingEntry.length > 0) {
+                
+                console.log(editingEntry);
+            }
+            
+        });
+
+        document.querySelector('div[contenteditable]').onkeydown = function(e) {
+            if (e.keyCode === 13) { // user pressed enter
+                document.execCommand('insertHTML', false, '<br/><br/>');
+                return false;
+            }
+        };        
+
+        function cleanMarkup() {
             let toClean = document.querySelectorAll('entry.remove');
             while(toClean.length) {
                 let parent = toClean[0].parentNode;
@@ -104,6 +128,38 @@
                 toClean = document.querySelectorAll('entry.remove');
             }
         }
+
+        function updateData() {
+
+            let charactersList = document.querySelector("#sidebar ul");
+            charactersList.innerHTML = "";
+
+            Object.keys(fiction.entries).forEach(char => {
+                let newCharacter = document.createElement("li");
+                newCharacter.appendChild(document.createTextNode(char));
+                charactersList.appendChild(newCharacter);
+            });
+
+            console.log(fiction)
+
+            // while (true) {
+            //     let c = characters.next();
+            //     if (c.done) break;
+            //     console.log(c)
+            //     // let newCharacter = document.createElement("li");
+            //     // newCharacter.appendChild(document.createTextNode(e.qty));
+            //     // charactersList.appendChild(li);
+
+            // }
+
+            // fiction.entries.forEach((e) => {
+            //     let newCharacter = document.createElement("li");
+            //     newCharacter.appendChild(document.createTextNode(e.qty));
+            //     charactersList.appendChild(li);
+            // });
+
+            // console.log(fiction.entries);
+        }
     
 
     </script>
@@ -111,39 +167,59 @@
     <script src="libs/context-menu.min.js"></script>
     <script>
         var manuscript_MenuItems = [
-            { name: '💀 Criar personagem', fn: markAsChar },
-            { name: 'Copy', fn: function(target) { console.log('Copy', target); }},
-            { name: 'Paste', fn: function(target) { console.log('Paste', target); }},
-            {},
-            { name: 'Selecionar tudo', fn: function(target) { console.log('Select All', target); }},
+            { name: 'Marcar personagem', fn: markAsChar },
+            // { name: 'Copy', fn: function(target) { console.log('Copy', target); }},
+            // { name: 'Paste', fn: function(target) { console.log('Paste', target); }},
+            // {},
+            // { name: 'Selecionar tudo', fn: function(target) { console.log('Select All', target); }},
         ];
 
         var manuscript_CtxMenu = new ContextMenu('#manuscript', manuscript_MenuItems, { className: 'ContextMenu-fiction' });
-        manuscript_CtxMenu.on('shown', () => console.log('Context menu shown'));
+        // manuscript_CtxMenu.on('shown', () => console.log('Context menu shown'));
 
         var character_MenuItems = [
-            { name: '❌ Desmarcar personagem', fn: function(target) { unmarkAsChar(target); } },
+            { name: 'Desmarcar personagem', fn: function(target) { unmarkAsChar(target); } },
         ];
 
         var character_CtxMenu = new ContextMenu('.character', character_MenuItems, { className: 'ContextMenu-fiction' });
         character_CtxMenu.on('shown', () => console.log('Context menu shown'));
 
         function unmarkAsChar(target) {
+
+            fiction.entries[target.innerHTML].references = fiction.entries[target.innerHTML].references.filter(e => e !== target.id);
+            if (fiction.entries[target.innerHTML].references.length == 0) {
+                delete fiction.entries[target.innerHTML];
+            }
+
             target.classList.remove('character');
             target.classList.add('remove');
             if (window.getSelection) {
                 sel = window.getSelection();
                 sel.removeAllRanges();
             }
-            cleanEntries();
+
+            cleanMarkup();
+            updateData();
         }
 
         function markAsChar() {
             if (window.getSelection) {
                 sel = window.getSelection();
                 if (sel.getRangeAt && sel.rangeCount) {
-                    var el = document.createElement("div");
-                    el.innerHTML = "<entry id='entry_" + Date.now() +  "' class='character'>" + sel.toString() + "</entry>";
+
+                    let entryText = sel.toString();
+                    let leftPad = '', rightPad = '';
+                    if (entryText[0] == ' ') {
+                        leftPad = ' ';
+                    }
+                    if (entryText[entryText.length-1] == ' ') {
+                        rightPad = ' ';
+                    }
+
+                    let entryKey = entryText.trim();
+                    let entryId = 'entry_' + Date.now();
+                    let el = document.createElement("div");
+                    el.innerHTML = leftPad + "<entry id='" + entryId + "' class='character'>" + entryKey + "</entry>" + rightPad;
 
                     range = sel.getRangeAt(0);
                     range.deleteContents();
@@ -162,7 +238,17 @@
                         sel.removeAllRanges();
                         sel.addRange(range);
                     }
+
+                    if (Object.hasOwn(fiction.entries, entryKey)) {
+                        fiction.entries[entryKey].references.push(entryId); 
+                    } else {
+                        fiction.entries[entryKey] = {
+                            references: [entryId],
+                        }
+                    }
+
                 }
+                updateData();  
             } 
         }
 
